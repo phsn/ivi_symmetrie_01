@@ -18,20 +18,39 @@ void ofApp::setup(){
     
     ofAddListener(beatSyncThread.tickEvent, this, &ofApp::onTick);
     ofAddListener(beatSyncThread.tick8Event, this, &ofApp::onTick8);
+    ofAddListener(beatSyncThread.tick16Event, this, &ofApp::onTick16);
     ofAddListener(beatSyncThread.barEvent, this, &ofApp::onBar);
     ofAddListener(beatSyncThread.bpmChange, this, &ofApp::onBPMChange);
     
     beatSyncThread.start();
+    
+    gui.setup("ivi_symmetrie_01", "ivi_symmetrie_01", ofGetWidth()/2-100,ofGetHeight()-150);
+    gui.add(numRepetitions.set("Repetitions", 10, 1, 100));
+    gui.add(accumulation.set("Accumulation", 70.0, 0.0, 100.0));
+    gui.add(fisheye_distortion.set("Distortion", 0.6, -1.0, 1.0));
+    gui.add(fisheye_abberation.set("Chromatic Abberation", 70.0, 0.0, 200.0));
+
+    
+    centerObj.setup(ofVec3f(0,0,0), ofVec3f(0,0,0), ofVec3f(1,1,1));
 
 }
 
 //--------------------------------------------------------------
 void ofApp::update(){
-
+    // check for waiting messages
+    while(receiver.hasWaitingMessages()){
+        // get the next message
+        ofxOscMessage m;
+        receiver.getNextMessage(&m);
+        handleOSC(m);
+    }
 }
 
 //--------------------------------------------------------------
 void ofApp::draw(){
+    
+    ofSetBackgroundAuto(true);
+
     kalaidoFBO.begin();
     drawKalaido();
     kalaidoFBO.end();
@@ -40,7 +59,9 @@ void ofApp::draw(){
     if ( fisheyeEnabled ) {
         fisheye.begin();
         fisheye.setUniform2f( "iResolution", ofGetWidth(), ofGetHeight()*1.77);
-        fisheye.setUniform2f( "iMouse", ofGetWidth()/2.0+400, ofGetMouseY());
+        fisheye.setUniform2f( "iMouse", ofGetWidth()/2.0+fisheye_distortion*ofGetWidth()/2.0, ofGetMouseY());
+        fisheye.setUniform1f( "chromAbb", fisheye_abberation);
+
     }
     
     kalaidoFBO.draw( 0, 0, ofGetWidth(), ofGetHeight() );
@@ -48,6 +69,8 @@ void ofApp::draw(){
     if ( fisheyeEnabled ) {
         fisheye.end();
     }
+    
+    gui.draw();
 }
 
 //--------------------------------------------------------------
@@ -59,7 +82,7 @@ void ofApp::drawKalaido(){
     
     if ( kalaidoEnabled ) {
         kalaido.begin();
-        kalaido.setUniform1i( "numRepetitions", int(ofGetMouseX()/float(ofGetWidth())*10) );
+        kalaido.setUniform1i( "numRepetitions", numRepetitions);
         kalaido.setUniform2f( "screenSize", ofGetWidth(), ofGetHeight());
     }
     
@@ -73,37 +96,58 @@ void ofApp::drawKalaido(){
 
 //--------------------------------------------------------------
 void ofApp::drawBase(){
+    ofSetColor(255,255,255,(1.0f-accumulation/100.0f)*255.0f);
+    ofRect(0,0,ofGetWidth(),ofGetHeight());
     if ( kalaidoEnabled ) {
-        ofBackground(255);
+        //ofBackground(255,255,255,120);
+        
     } else {
-        ofBackground(0);
+        //ofSetColor(0,0,0,100);
+        //ofBackground(0,0,0,40);
     }
     
-    ofSetColor(255,255,255);
-    ofTriangle(ofGetWidth()/2, 0, ofGetWidth()/2+squareSize/2, ofGetHeight(),ofGetWidth()/2-squareSize/2, ofGetHeight());
+    //ofSetColor(255,255,255,120);
+    //ofTriangle(ofGetWidth()/2, 0, ofGetWidth()/2+squareSize/2, ofGetHeight(),ofGetWidth()/2-squareSize/2, ofGetHeight());
     
+    ofSetColor(centerColor);
     
+    centerObj.update(ofVec3f(ofGetMouseX(), ofGetMouseY()-50, 0), ofVec3f(0,0,180*ofGetMouseX()/float(ofGetWidth())), ofVec3f(1,4,1));
+    
+    centerObj.draw();
+    /*
     ofTranslate(ofGetWidth()*0.6,0);
     ofRotateZ(90*ofGetMouseX()/float(ofGetWidth()));
     ofTranslate(-ofGetWidth()*0.6,0);
     ofSetColor(0, 0, 0);
     //ofEllipse(ofGetMouseX(),ofGetMouseY(),200,200);
-    ofRect(0,ofGetMouseY()-50,ofGetWidth(),100);
+    ofRect(0,ofGetMouseY()-50,ofGetWidth(),100);*/
 }
 
 //--------------------------------------------------------------
 void ofApp::onBar(ofVec2f & bObj){
-    
+    centerColor = ofColor(0,0,0);
 }
 
 //--------------------------------------------------------------
 void ofApp::onTick(ofVec2f & tObj){
-    
+    centerColor = ofColor(0,0,40);
+    ofxOscMessage m;
+    m.setAddress("/BeatState/x");
+    m.addFloatArg((tObj.y)/3.0f);
+    sender.sendMessage(m);
 }
 
 //--------------------------------------------------------------
 void ofApp::onTick8(ofVec2f & tObj){
-    
+    centerColor = ofColor(0,80,0);
+
+}
+
+//--------------------------------------------------------------
+void ofApp::onTick16(ofVec2f & tObj){
+    //centerColor = ofColor(150,0,0);
+
+    //cout << "TICK " << tObj.y << endl;
 }
 
 //--------------------------------------------------------------
@@ -202,6 +246,8 @@ void ofApp::keyPressed(int key){
         kalaidoEnabled = !kalaidoEnabled;
     } else if(key == 'f') {
         fisheyeEnabled = !fisheyeEnabled;
+    } else if(key == 'b') {
+        centerObj.blur = !centerObj.blur;
     }
 
 }

@@ -17,6 +17,7 @@ public:
     
     ofEvent<ofVec2f> tickEvent;
     ofEvent<ofVec2f> tick8Event;
+    ofEvent<ofVec2f> tick16Event;
     ofEvent<ofVec2f> barEvent;
     ofEvent<ofVec2f> bpmChange;
 
@@ -82,12 +83,13 @@ public:
                     barStart = beatStart;
                     tickStart = beatStart;
                     tick8Start = tickStart;
+                    tick16Start = tickStart;
                     beatState = 0;
                     beat8State = 0;
                     SYNC = false;
                 }
 
-                if(ofGetElapsedTimef()-tick8Start >= tickTime/2.0f) {
+                if(ofGetElapsedTimef()-tick16Start >= tickTime/4.0f) {
                     this->tick();
                 }
                 sleep(10);
@@ -105,29 +107,37 @@ public:
     
     void tick() {
         
-        if(ofGetElapsedTimef()-lastTick > tickTime/4.0f) {
+        //if(ofGetElapsedTimef()-lastTick > tickTime/8.0f) {
+        ofVec2f tData = ofVec2f(tick16Start, beat16State);
+        ofNotifyEvent(tick16Event, tData, this);
         
-        ofVec2f tData = ofVec2f(tick8Start, beat8State);
-        ofNotifyEvent(tick8Event, tData, this);
+            if(ofGetElapsedTimef()-tick8Start >= tickTime/2.0f) {
         
-        if(ofGetElapsedTimef()-tickStart >= tickTime) {
-            tData = ofVec2f(tickStart, beatState);
-            ofNotifyEvent(tickEvent, tData, this);
-            if(beatState == 0) {
-                ofVec2f bData = ofVec2f(tickStart, beatState);
-                ofNotifyEvent(barEvent, bData, this);
+                ofVec2f tData = ofVec2f(tick8Start, beat8State);
+                ofNotifyEvent(tick8Event, tData, this);
+        
+                if(ofGetElapsedTimef()-tickStart >= tickTime) {
+                    tData = ofVec2f(tickStart, beatState);
+                    ofNotifyEvent(tickEvent, tData, this);
+                    if(beatState == 0) {
+                        ofVec2f bData = ofVec2f(tickStart, beatState);
+                        ofNotifyEvent(barEvent, bData, this);
+                    }
+                    beatState = (beatState+1)%4;
+                    if(beatState == 0) barStart = tickStart;
+                    tickStart += tickTime;
+                    
+                }
+        
+                beat8State = (beat8State+1)%8;
+                tick8Start += tickTime/2.0f;
+            
+            
             }
-            beatState = (beatState+1)%4;
-            if(beatState == 0) barStart = tickStart;
-            tickStart += tickTime;
+        beat16State = (beat16State+1)%16;
+        tick16Start += tickTime/4.0f;
 
-        }
-        
-        beat8State = (beat8State+1)%8;
-        tick8Start += tickTime/2.0f;
-            
-            
-        }
+        //}
 
     }
     
@@ -169,6 +179,7 @@ protected:
     int mBPM=120;
     int beatState;
     int beat8State;
+    int beat16State;
 
     
     float bTime;
@@ -177,8 +188,10 @@ protected:
     float barStart;
     float tickStart;
     float tick8Start;
+    float tick16Start;
     bool tickSent;
     float lastTick;
+    float last16Tick;
     float lastTap;
     vector<float> tapTimes;
     

@@ -9,6 +9,7 @@ void iviObj::setup(ofVec3f setPos, ofVec3f setRot, ofVec3f setScale){
     this->setOrientation(setRot);
     this->setScale(setScale);
     birthState = this->getGlobalTransformMatrix();
+    blur = true;
 }
 
 void iviObj::update(ofVec3f newPos, ofVec3f newRot, ofVec3f newScale){
@@ -27,6 +28,8 @@ void iviObj::draw(){
     int numSamples = 24;
     float prgs;
     ofMatrix4x4 blendMtx;
+    
+    if(blur) {
     
     for(int i=numSamples; i >= 1 ; i--) {
         prgs = float(i)/float(numSamples-1);
@@ -65,15 +68,19 @@ void iviObj::draw(){
         
         ofPushMatrix();
         ofMultMatrix(blendMtx);
-        ofSetColor(255,255, 255,255*(1-prgs));
-        ofEllipse(0,0,0,100,100);
+        ofSetColor(ofGetStyle().color,255*(1-prgs));
+        ofRect(0,0,0,100,100);
         ofPopMatrix();
     }
-    
-    ofPushMatrix();
-    ofMultMatrix(curMtx);
-    ofSetColor(255, 255, 255,20);
-    //ofEllipse(0,0,0,100,100);
-    ofPopMatrix();
+        
+    } else {
+        ofPushMatrix();
+        ofMultMatrix(curMtx);
+        ofSetColor(ofGetStyle().color);
+        ofRect(0,0,0,100,100);
+        ofPopMatrix();
+
+    }
+
 }
 

@@ -15,5 +15,7 @@ public:
     ofMatrix4x4 birthState;
     ofMatrix4x4 prevState;
     ofMatrix4x4 beforeState;
+    
+    bool blur;
 
 };
